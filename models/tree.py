@@ -68,20 +68,23 @@ class DecisionTree:
         accuracy = np.mean(predictions == y_val)
         return accuracy, tree
 
-    def fit(self, X, y, X_val=None, y_val=None, max_depth_range=range(1, 11)):
+    def fit(self, X, y, X_val=None, y_val=None, max_depth_range=range(1, 11), random_forest=False):
         best_accuracy = -1
         best_tree = None
         X_train, y_train = X, y
         
-        for depth in max_depth_range:
-            accuracy, tree = self._train_with_depth(X_train, y_train, X_val, y_val, depth)
-            if accuracy > best_accuracy:
-                best_accuracy = accuracy
-                self.best_max_depth = depth
-                best_tree = tree
+        if random_forest:
+            self.tree_ = self._grow_tree(X_train, y_train)
+        else:
+            for depth in max_depth_range:
+                accuracy, tree = self._train_with_depth(X_train, y_train, X_val, y_val, depth)
+                if accuracy > best_accuracy:
+                    best_accuracy = accuracy
+                    self.best_max_depth = depth
+                    best_tree = tree
         
-        print("Best max depth:", self.best_max_depth)
-        self.tree_ = best_tree
+            print("Best max depth:", self.best_max_depth)
+            self.tree_ = best_tree
 
     def _predict_sample(self, node, x):
         if node.left is None and node.right is None:
@@ -93,3 +96,29 @@ class DecisionTree:
         
     def predict(self, X):
         return [self._predict_sample(self.tree_, x) for x in X]
+
+class RandomForest:
+    def __init__(self, n_trees=20, max_depth=1, sample_size=None):
+        self.n_trees = n_trees
+        self.max_depth = max_depth
+        self.sample_size = sample_size
+        self.trees = []
+
+    def fit(self, X, y, X_val=None, y_val=None):
+        self.trees = []
+        for _ in range(self.n_trees):
+            if self.sample_size is None:
+                sample_size = len(y)
+            else:
+                sample_size = self.sample_size
+                
+            idxs = np.random.choice(len(y), size=sample_size, replace=True)
+            X_sample, y_sample = X[idxs], y[idxs]
+
+            tree = DecisionTree(max_depth=self.max_depth)
+            tree.fit(X_sample, y_sample, X_val, y_val, random_forest=True)
+            self.trees.append(tree)
+
+    def predict(self, X):
+        tree_predictions = np.array([tree.predict(X) for tree in self.trees])
+        return [np.bincount(tree_predictions[:, i]).argmax() for i in range(tree_predictions.shape[1])]

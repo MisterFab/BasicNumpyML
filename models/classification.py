@@ -220,3 +220,34 @@ class LogisticRegressionGD(EarlyStoppingMixin):
     
     def predict(self, x):
         return np.where(self.activation(self.net_input(x)) >= 0.5, 1, 0)
+    
+class KNearestNeighbors:
+    def __init__(self, k=3):
+        self.k = k
+
+    def fit(self, X, y, x_val, y_val):
+        self.X_train = X
+        self.y_train = y
+        self.X_val = x_val
+        self.y_val = y_val
+
+    def predict(self, X):
+        best_accuracy = 0
+        predictions = None
+        for i in range(1, 10):
+            y_pred = [self._predict(x) for x in X]
+            self.best_k = self.k
+            correct_predictions = self.y_val == y_pred
+            accuracy = np.mean(correct_predictions)
+            if accuracy > best_accuracy:
+                self.k = i
+                predictions = np.array(y_pred)
+        print("Best k:", self.best_k)
+        return predictions
+
+    def _predict(self, x):
+        distances = [np.sqrt(np.sum((x - x_train)**2)) for x_train in self.X_train]
+        k_indices = np.argsort(distances)[:self.k]
+        k_nearest_labels = [self.y_train[i] for i in k_indices]
+        most_common = np.bincount(k_nearest_labels).argmax()
+        return most_common
