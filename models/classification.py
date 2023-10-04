@@ -41,7 +41,6 @@ class Perceptron(EarlyStoppingMixin):
             self._initialize_early_stopping()
 
         for self.epoch in range(self.n_iter):
-            error = 0
             for xi, target in zip(x, y):
                 update = self.eta * (target - self.predict(xi))
                 self.w_ += update * xi
@@ -198,9 +197,6 @@ class LogisticRegressionGD(EarlyStoppingMixin):
             net_input = self.net_input(x)
             output = self.activation(net_input)
             errors = (y - output)
-            # The multiplication by 2 is just a scaling factor and does not 
-            # impact the optimization's convergence property, but it would
-            # affect the convergence speed depending on the learning rate.
             self.w_ += self.eta * (x.T.dot(errors) / x.shape[0] - (1.0 / self.C) * self.w_)
             self.b_ += self.eta * errors.mean()
             loss = (-y.dot(np.log(output)) - ((1 - y).dot(np.log(1 - output))) / x.shape[0])

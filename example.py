@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 import datetime
 
-from classification import Perceptron, AdalineGD, AdalineSGD, LogisticRegressionGD
+from models.classification import Perceptron, AdalineGD, AdalineSGD, LogisticRegressionGD
+from models.tree import DecisionTree
 
 def train_val_split(x, y, val_size=0.2):
     total_samples = x.shape[0]
@@ -21,6 +22,16 @@ def train_val_split(x, y, val_size=0.2):
 def test_model(model, x_train, y_train, x_val, y_val):
     time = datetime.datetime.now()
     model.fit(x_train, y_train, x_val, y_val, early_stopping=True)
+    y_pred = model.predict(x_val)
+    correct_predictions = y_val == y_pred
+    accuracy = np.mean(correct_predictions)
+    elapsed_time = datetime.datetime.now() - time
+    milliseconds = elapsed_time.total_seconds() * 1000
+    return accuracy, milliseconds
+
+def test_tree(model, x_train, y_train, x_val, y_val):
+    time = datetime.datetime.now()
+    model.fit(x_train, y_train, x_val, y_val)
     y_pred = model.predict(x_val)
     correct_predictions = y_val == y_pred
     accuracy = np.mean(correct_predictions)
@@ -64,10 +75,14 @@ def main():
     models = [Perceptron(), AdalineGD(), AdalineSGD(), LogisticRegressionGD()]
 
     for model in models:
-        accuracy, milliseconds = test_model(model, x_train, y_train, x_val, y_val) # Updated to pass validation data
+        accuracy, milliseconds = test_model(model, x_train, y_train, x_val, y_val)
         print(f"{model.__class__.__name__} fitting time: {milliseconds:.2f} ms")
         print(f"{model.__class__.__name__} accuracy: {accuracy:.2%}")
 
+    tree = DecisionTree()
+    accuracy, milliseconds = test_tree(tree, x_train, y_train, x_val, y_val)
+    print(f"{tree.__class__.__name__} fitting time: {milliseconds:.2f} ms")
+    print(f"{tree.__class__.__name__} accuracy: {accuracy:.2%}")
 
 if __name__ == "__main__":
     main()
