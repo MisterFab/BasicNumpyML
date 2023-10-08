@@ -8,7 +8,7 @@ class EarlyStoppingMixin:
         self.no_improvement_count = 0
 
     def _early_stopping_check(self, x_val, y_val, patience):
-        val_loss = self.compute_loss(x_val, y_val)
+        val_loss = self._compute_loss(x_val, y_val)
         if val_loss < self.best_loss:
             self.best_loss = val_loss
             self.best_weights = np.copy(self.w_)
@@ -50,16 +50,16 @@ class Perceptron(EarlyStoppingMixin):
                     break
         return self
 
-    def compute_loss(self, X, y):
+    def _compute_loss(self, X, y):
         predictions = self.predict(X)
         errors = self.eta * (y - predictions)
         return np.mean(errors**2)
     
-    def net_input(self, x):
+    def _net_input(self, x):
         return np.dot(x, self.w_) + self.b_
     
     def predict(self, x):
-        return np.where(self.net_input(x) >= 0.0, 1, 0)
+        return np.where(self._net_input(x) >= 0.0, 1, 0)
 
 class AdalineGD(EarlyStoppingMixin):
     def __init__(self, eta=0.01, n_iter=50, random_state=1):
@@ -79,8 +79,8 @@ class AdalineGD(EarlyStoppingMixin):
             self._initialize_early_stopping()
 
         for self.epoch in range(self.n_iter):
-            net_input = self.net_input(x)
-            output = self.activation(net_input)
+            net_input = self._net_input(x)
+            output = self._activation(net_input)
             errors = (y - output)
             self.w_ += self.eta * x.T.dot(errors) / x.shape[0]
             self.b_ += self.eta * errors.mean()
@@ -91,19 +91,19 @@ class AdalineGD(EarlyStoppingMixin):
                     break
         return self
     
-    def compute_loss(self, X, y):
+    def _compute_loss(self, X, y):
         predictions = self.predict(X)
         errors = y - predictions
         return np.mean(errors**2)
 
-    def net_input(self, x):
+    def _net_input(self, x):
         return np.dot(x, self.w_) + self.b_
     
-    def activation(self, x):
+    def _activation(self, x):
         return x
     
     def predict(self, x):
-        return np.where(self.activation(self.net_input(x)) >= 0.5, 1, 0)
+        return np.where(self._activation(self._net_input(x)) >= 0.5, 1, 0)
     
 class AdalineSGD(EarlyStoppingMixin):
     def __init__(self, eta=0.01, n_iter=50, shuffle=True, random_state=1):
@@ -134,7 +134,7 @@ class AdalineSGD(EarlyStoppingMixin):
                     break
         return self
     
-    def compute_loss(self, X, y):
+    def _compute_loss(self, X, y):
         predictions = self.predict(X)
         errors = y - predictions
         return np.mean(errors**2)
@@ -160,21 +160,21 @@ class AdalineSGD(EarlyStoppingMixin):
         self.w_initialized = True
     
     def _update_weights(self, xi, target):
-        output = self.activation(self.net_input(xi))
+        output = self._activation(self._net_input(xi))
         error = target - output
         self.w_ += self.eta * 2.0 * xi * error
         self.b_ += self.eta * 2.0 * error
         loss = error**2
         return loss
     
-    def net_input(self, x):
+    def _net_input(self, x):
         return np.dot(x, self.w_) + self.b_
     
-    def activation(self, x):
+    def _activation(self, x):
         return x
     
     def predict(self, x):
-        return np.where(self.activation(self.net_input(x)) >= 0.5, 1, 0)
+        return np.where(self._activation(self._net_input(x)) >= 0.5, 1, 0)
     
 class LogisticRegressionGD(EarlyStoppingMixin):
     def __init__(self, eta=0.01, n_iter=50, random_state=1, C=1.0):
@@ -194,8 +194,8 @@ class LogisticRegressionGD(EarlyStoppingMixin):
             self._initialize_early_stopping()
 
         for self.epoch in range(self.n_iter):
-            net_input = self.net_input(x)
-            output = self.activation(net_input)
+            net_input = self._net_input(x)
+            output = self._activation(net_input)
             errors = (y - output)
             self.w_ += self.eta * (x.T.dot(errors) / x.shape[0] - (1.0 / self.C) * self.w_)
             self.b_ += self.eta * errors.mean()
@@ -207,47 +207,51 @@ class LogisticRegressionGD(EarlyStoppingMixin):
                     break
         return self
     
-    def compute_loss(self, X, y):
+    def _compute_loss(self, X, y):
         predictions = self.predict(X)
         errors = y - predictions
         return np.mean(errors**2)
 
-    def net_input(self, x):
+    def _net_input(self, x):
         return np.dot(x, self.w_) + self.b_
     
-    def activation(self, z):
+    def _activation(self, z):
         return 1.0 / (1.0 + np.exp(-np.clip(z, -250, 250)))
     
     def predict(self, x):
-        return np.where(self.activation(self.net_input(x)) >= 0.5, 1, 0)
-    
+        return np.where(self._activation(self._net_input(x)) >= 0.5, 1, 0)
+
 class KNearestNeighbors:
     def __init__(self, k=3):
         self.k = k
 
-    def fit(self, X, y, x_val, y_val):
+    def fit(self, X, y, X_val, y_val):
         self.X_train = X
         self.y_train = y
-        self.X_val = x_val
-        self.y_val = y_val
+        self._tune_parameters(X_val, y_val)
 
     def predict(self, X):
+        return np.array([self._predict(x) for x in X])
+
+    def _tune_parameters(self, X_val, y_val):
         best_accuracy = 0
-        predictions = None
+        best_k = self.k
+
         for i in range(1, 10):
-            y_pred = [self._predict(x) for x in X]
-            self.best_k = self.k
-            correct_predictions = self.y_val == y_pred
-            accuracy = np.mean(correct_predictions)
+            self.k = i
+            y_pred = self.predict(X_val)
+            accuracy = np.mean(y_val == y_pred)
+            
             if accuracy > best_accuracy:
-                self.k = i
-                predictions = np.array(y_pred)
-        print("Best k:", self.best_k)
-        return predictions
+                best_accuracy = accuracy
+                best_k = i
+        
+        self.k = best_k
+        print("Best k:", best_k)
 
     def _predict(self, x):
-        distances = [np.sqrt(np.sum((x - x_train)**2)) for x_train in self.X_train]
+        distances = np.sqrt(np.sum((self.X_train - x)**2, axis=1))
         k_indices = np.argsort(distances)[:self.k]
-        k_nearest_labels = [self.y_train[i] for i in k_indices]
+        k_nearest_labels = self.y_train[k_indices]
         most_common = np.bincount(k_nearest_labels).argmax()
         return most_common
