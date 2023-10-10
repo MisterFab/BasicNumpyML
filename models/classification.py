@@ -36,11 +36,10 @@ class Perceptron(EarlyStoppingMixin):
 
         self.b_ = np.float_(0.0)
 
-        self.epoch = 0
         if early_stopping:
             self._initialize_early_stopping()
 
-        for self.epoch in range(self.n_iter):
+        for _ in range(self.n_iter):
             for xi, target in zip(x, y):
                 update = self.eta * (target - self.predict(xi))
                 self.w_ += update * xi
@@ -74,11 +73,10 @@ class AdalineGD(EarlyStoppingMixin):
         self.b_ = np.float_(0.0)
         self.losses_ = []
 
-        self.epoch = 0
         if early_stopping:
             self._initialize_early_stopping()
 
-        for self.epoch in range(self.n_iter):
+        for _ in range(self.n_iter):
             net_input = self._net_input(x)
             output = self._activation(net_input)
             errors = (y - output)
@@ -117,11 +115,10 @@ class AdalineSGD(EarlyStoppingMixin):
         self._initialize_weights(x.shape[1])
         self.losses_ = []
 
-        self.epoch = 0
         if early_stopping:
             self._initialize_early_stopping()
 
-        for self.epoch in range(self.n_iter):
+        for _ in range(self.n_iter):
             if self.shuffle:
                 x, y = self._shuffle(x, y)
             losses = []
@@ -189,11 +186,10 @@ class LogisticRegressionGD(EarlyStoppingMixin):
         self.b_ = np.float_(0.0)
         self.losses_ = []
 
-        self.epoch = 0
         if early_stopping:
             self._initialize_early_stopping()
 
-        for self.epoch in range(self.n_iter):
+        for _ in range(self.n_iter):
             net_input = self._net_input(x)
             output = self._activation(net_input)
             errors = (y - output)
